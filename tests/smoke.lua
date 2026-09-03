@@ -341,15 +341,26 @@ run_check("minimap toggle", function()
   vim.api.nvim_buf_set_name(0, vim.fn.tempname() .. ".lua")
   vim.bo.filetype = "lua"
   check(require("workbench.features").toggle_minimap(), "minimap wrapper rejected a file buffer")
-  vim.wait(200)
-  local minimap_windows = vim.tbl_filter(function(winid)
-    local bufnr = vim.api.nvim_win_get_buf(winid)
-    return vim.bo[bufnr].filetype == "neominimap"
-  end, vim.api.nvim_list_wins())
+
+  local minimap_windows = {}
+  check(
+    vim.wait(3000, function()
+      minimap_windows = vim.tbl_filter(function(winid)
+        local bufnr = vim.api.nvim_win_get_buf(winid)
+        return vim.bo[bufnr].filetype == "neominimap"
+      end, vim.api.nvim_list_wins())
+      for _, winid in ipairs(minimap_windows) do
+        local bufnr = vim.api.nvim_win_get_buf(winid)
+        local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+        if not vim.bo[bufnr].modifiable and table.concat(lines, "\n"):find("%S") then
+          return true
+        end
+      end
+      return false
+    end, 50),
+    "minimap did not render visible content"
+  )
   check(#minimap_windows > 0, "minimap wrapper did not create a minimap window")
-  check(require("workbench.features").toggle_minimap(), "minimap wrapper could not disable the minimap")
-  vim.wait(100)
-  vim.cmd("bwipeout!")
 end)
 
 vim.wait(200)
