@@ -31,10 +31,10 @@ jobs:
           version: ${{ matrix.neovim }}
 
       - name: Cache plugins
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.local/share/nvim/lazy
-          key: lazy-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('lazy-lock*.json') }}
+          key: lazy-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('lazy-lock*.json', 'lua/plugins/*.lua') }}
 
       - name: Run release smoke test
         run: ./scripts/smoke-test.sh

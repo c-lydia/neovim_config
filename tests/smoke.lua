@@ -198,6 +198,20 @@ run_check("Markdown preview end to end", function()
   local original_open = vim.ui.open
   local opened_url
   local ok, err = xpcall(function()
+    local markdown_plugin = require("lazy.core.config").plugins["markdown-preview.nvim"]
+    local package = vim.json.decode(table.concat(
+      vim.fn.readfile(markdown_plugin.dir .. "/package.json"),
+      "\n"
+    ))
+    local server_version = vim.trim(vim.fn["mkdp#util#pre_build_version"]())
+    check(
+      server_version == package.version,
+      ("Markdown preview server version is invalid (expected %s, got %s)"):format(
+        package.version,
+        server_version == "" and "no version" or server_version
+      )
+    )
+
     vim.ui.open = function(url)
       opened_url = url
       return {}, nil

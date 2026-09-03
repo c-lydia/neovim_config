@@ -244,6 +244,26 @@ return {
       vim.g.mkdp_echo_preview_url = 1
       vim.g.mkdp_auto_close = 1
     end,
+    config = function(plugin)
+      local package = vim.json.decode(table.concat(vim.fn.readfile(plugin.dir .. "/package.json"), "\n"))
+      local function server_is_valid()
+        local ok, version = pcall(vim.fn["mkdp#util#pre_build_version"])
+        return ok and vim.trim(version) == package.version
+      end
+      if server_is_valid() then return end
+
+      -- Existing Lazy caches may contain the checkout but not the ignored
+      -- prebuilt artifact, or an interrupted download. Repair those installs
+      -- when the plugin loads and validate the binary rather than just its mode.
+      vim.notify("Markdown Preview server is missing; installing its prebuilt server …")
+      local ok, err = pcall(vim.fn["mkdp#util#install_sync"], true)
+      if not ok or not server_is_valid() then
+        vim.notify(
+          "Could not install the Markdown Preview server: " .. tostring(err or "download failed"),
+          vim.log.levels.ERROR
+        )
+      end
+    end,
     ft = { "markdown" },
     keys = {
       { "<leader>mp", "<cmd>MarkdownPreviewToggle<cr>", desc = "Toggle Markdown preview" },

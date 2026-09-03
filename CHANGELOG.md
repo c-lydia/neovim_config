@@ -5,7 +5,8 @@
 ### Fixed
 
 - Install Markdown Preview's prebuilt server synchronously without requiring
-  Node/npm, including inside the Neovim Flatpak.
+  Node/npm, including inside the Neovim Flatpak, and repair older caches that
+  are missing or contain an interrupted download of the ignored server artifact.
 - Open Markdown preview URLs through Neovim's desktop handler so Flatpak uses
   its OpenURI portal and failures retain a manually usable URL.
 - Bootstrap lazy.nvim at its published lock revision and keep smoke-test copies
