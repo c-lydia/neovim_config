@@ -270,10 +270,24 @@ return {
           { capabilities = capabilities },
           server_config[server_name] or {}
         )
-        vim.lsp.config(server_name, config)
         local executable = optional_commands[server_name]
-        if executable == nil or vim.fn.executable(executable) == 1 then
-          vim.lsp.enable(server_name)
+        local can_enable = executable == nil or vim.fn.executable(executable) == 1
+
+        if vim.lsp.config and vim.lsp.enable then
+          vim.lsp.config(server_name, config)
+          if can_enable then
+            vim.lsp.enable(server_name)
+          end
+        else
+          local lspconfig = require("lspconfig")
+          local legacy_name = server_name == "ts_ls" and "tsserver" or server_name
+          if lspconfig[legacy_name] then
+            if can_enable then
+              lspconfig[legacy_name].setup(config)
+            end
+          else
+            vim.notify("Skipping unsupported LSP server: " .. server_name, vim.log.levels.WARN)
+          end
         end
       end
     end,
