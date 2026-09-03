@@ -194,6 +194,36 @@ run_check("Flatpak detection and Markdown browser bridge", function()
   check(opened_url == "http://localhost:8765/page/1", "Markdown browser bridge opened the wrong URL")
 end)
 
+run_check("file-scoped feature guards", function()
+  local features = require("workbench.features")
+  local original_notify = vim.notify
+  local notices = {}
+  local ok, err = xpcall(function()
+    vim.notify = function(message, level)
+      notices[#notices + 1] = { message = tostring(message), level = level }
+    end
+
+    vim.cmd("enew")
+    vim.bo.buftype = "nofile"
+    check(not features.toggle_markdown_preview(), "Markdown preview accepted a non-file buffer")
+    check(not features.toggle_minimap(), "Neominimap accepted a non-file buffer")
+  end, debug.traceback)
+
+  vim.notify = original_notify
+  pcall(vim.cmd, "bwipeout!")
+  if not ok then error(err) end
+
+  check(#notices == 2, "file-scoped feature guards did not show both notices")
+  check(
+    notices[1] and notices[1].message:find("open Markdown file", 1, true) ~= nil,
+    "Markdown preview guard did not explain how to recover"
+  )
+  check(
+    notices[2] and notices[2].message:find("open file", 1, true) ~= nil,
+    "Neominimap guard did not explain how to recover"
+  )
+end)
+
 run_check("Markdown preview end to end", function()
   local original_open = vim.ui.open
   local opened_url
@@ -221,7 +251,10 @@ run_check("Markdown preview end to end", function()
     vim.api.nvim_buf_set_lines(0, 0, -1, false, { "# Release preview", "", "Flatpak smoke test." })
     vim.bo.filetype = "markdown"
     check(vim.fn.exists(":MarkdownPreview") == 2, "missing buffer command :MarkdownPreview")
-    vim.cmd("MarkdownPreview")
+    check(
+      require("workbench.features").toggle_markdown_preview(),
+      "Markdown preview wrapper rejected a Markdown buffer"
+    )
     check(vim.wait(8000, function() return opened_url ~= nil end, 100), "preview server did not open a URL")
     check(
       opened_url and opened_url:match("^http://localhost:%d+/page/%d+$") ~= nil,
@@ -305,10 +338,16 @@ run_check("minimap toggle", function()
     "  return true",
     "end",
   })
+  vim.api.nvim_buf_set_name(0, vim.fn.tempname() .. ".lua")
   vim.bo.filetype = "lua"
-  vim.cmd("Neominimap Toggle")
+  check(require("workbench.features").toggle_minimap(), "minimap wrapper rejected a file buffer")
   vim.wait(200)
-  vim.cmd("Neominimap Toggle")
+  local minimap_windows = vim.tbl_filter(function(winid)
+    local bufnr = vim.api.nvim_win_get_buf(winid)
+    return vim.bo[bufnr].filetype == "neominimap"
+  end, vim.api.nvim_list_wins())
+  check(#minimap_windows > 0, "minimap wrapper did not create a minimap window")
+  check(require("workbench.features").toggle_minimap(), "minimap wrapper could not disable the minimap")
   vim.wait(100)
   vim.cmd("bwipeout!")
 end)

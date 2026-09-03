@@ -266,7 +266,11 @@ return {
     end,
     ft = { "markdown" },
     keys = {
-      { "<leader>mp", "<cmd>MarkdownPreviewToggle<cr>", desc = "Toggle Markdown preview" },
+      {
+        "<leader>mp",
+        function() require("workbench.features").toggle_markdown_preview() end,
+        desc = "Toggle Markdown preview",
+      },
     },
   },
 
@@ -303,7 +307,11 @@ return {
       }
     end,
     keys = {
-      { "<leader>mm", "<cmd>Neominimap Toggle<cr>", desc = "Toggle minimap" },
+      {
+        "<leader>mm",
+        function() require("workbench.features").toggle_minimap() end,
+        desc = "Toggle minimap",
+      },
     },
   },
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0-rc.4] - 2026-09-03
+
+### Fixed
+
+- Guard Markdown Preview and Neominimap against directory, sidebar, dashboard,
+  and terminal buffers so their mappings explain how to open a usable file
+  instead of failing or displaying a blank minimap.
+
 ## [0.1.0-rc.3] - 2026-09-03
 
 ### Fixed

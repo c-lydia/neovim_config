@@ -72,7 +72,7 @@ configuration directory:
 git clone https://github.com/c-lydia/neovim_config.git ~/src/neovim_config
 cd ~/src/neovim_config
 ./scripts/install.sh --native
-nvim
+nvim README.md
 ```
 
 The installer never overwrites an existing configuration. Move the old target
@@ -87,7 +87,7 @@ Install Neovim from Flathub, then target its app-specific configuration path:
 flatpak install flathub io.neovim.nvim
 cd ~/src/neovim_config
 ./scripts/install.sh --flatpak
-flatpak run io.neovim.nvim
+flatpak run io.neovim.nvim README.md
 ```
 
 Use `./scripts/install.sh --both` to share one checkout between native and
@@ -206,6 +206,11 @@ Useful terminal helpers mirror the Neovim commands:
 ## Core key mappings
 
 `<leader>` is the Space key.
+
+Markdown Preview and Neominimap operate on document buffers. If Neovim was
+started with a directory such as `nvim .`, first select a file with
+`<leader>ff` or press `<Enter>` on one in Neo-tree. They intentionally do not
+run against the sidebar, dashboard, or terminal buffers.
 
 | Key | Action |
 |---|---|
@@ -414,6 +419,8 @@ checks `.venv/bin/python` and `venv/bin/python` before falling back to
   `curl` or `wget`, but not Node/npm. The preview URL is also printed in Neovim
   so it can be opened manually if the desktop handler or Flatpak portal is
   unavailable.
+- Minimap is blank: open a normal source or document file before pressing
+  `<leader>mm`; sidebar, dashboard, and terminal buffers are not valid sources.
 - Clipboard unavailable: install the Wayland clipboard provider (`wl-clipboard`).
 
 ## Release smoke test

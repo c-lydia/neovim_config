@@ -116,6 +116,7 @@ return {
         { "<leader>f", group = "Find" },
         { "<leader>g", group = "Git" },
         { "<leader>h", group = "Hex / Git hunks" },
+        { "<leader>m", group = "Markdown / Minimap" },
         { "<leader>o", group = "Docker / Compose" },
         { "<leader>p", group = "CMake presets" },
         { "<leader>r", group = "Reverse engineering" },
