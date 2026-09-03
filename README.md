@@ -65,14 +65,43 @@ Neovim and use `:Mason` to install any newly available server.
 
 ## Install and start
 
-This configuration is active at `~/.config/nvim`. If copying it to another
-machine:
+Clone the workbench once, then use the installer to link it into Neovim's
+configuration directory:
 
 ```bash
-mv ~/.config/nvim ~/.config/nvim.bak
-cp -r /path/to/this/config ~/.config/nvim
+git clone https://github.com/c-lydia/neovim_config.git ~/src/neovim_config
+cd ~/src/neovim_config
+./scripts/install.sh --native
 nvim
 ```
+
+The installer never overwrites an existing configuration. Move the old target
+aside first if necessary. Pass `--copy` if an independent copy is preferable
+to the default link.
+
+### Flatpak Neovim
+
+Install Neovim from Flathub, then target its app-specific configuration path:
+
+```bash
+flatpak install flathub io.neovim.nvim
+cd ~/src/neovim_config
+./scripts/install.sh --flatpak
+flatpak run io.neovim.nvim
+```
+
+Use `./scripts/install.sh --both` to share one checkout between native and
+Flatpak Neovim. Flatpak Neovim reads configuration from
+`~/.var/app/io.neovim.nvim/config/nvim` and keeps plugins and other application
+data under its own `~/.var/app/io.neovim.nvim/data` tree. Run `:Lazy sync` and
+`:MasonToolsInstall` once inside each Neovim installation you use.
+
+The Flatpak is an isolated development environment and cannot automatically
+reuse every compiler or SDK installed on the host. Its first-run guide explains
+how to enable matching Freedesktop SDK extensions with
+`FLATPAK_ENABLE_SDK_EXT`. Markdown Preview does not need Node/npm in the
+Flatpak: this configuration installs its prebuilt server and sends the URL to
+the desktop through Flatpak's OpenURI portal.
 
 Useful maintenance commands:
 
@@ -381,8 +410,10 @@ checks `.venv/bin/python` and `venv/bin/python` before falling back to
   `:TSUpdate`. Neovim 0.11 is pinned to the compatibility branches; Neovim
   0.12 uses the rewritten `main` branches and needs `tree-sitter-cli` 0.26.1+.
 - Markdown preview fails: run `:Lazy build markdown-preview.nvim`, reopen the
-  Markdown file, and press `<leader>mp`. The preview URL is also printed in
-  Neovim so it can be opened manually if desktop browser launching is blocked.
+  Markdown file, and press `<leader>mp`. Building the prebuilt server requires
+  `curl` or `wget`, but not Node/npm. The preview URL is also printed in Neovim
+  so it can be opened manually if the desktop handler or Flatpak portal is
+  unavailable.
 - Clipboard unavailable: install the Wayland clipboard provider (`wl-clipboard`).
 
 ## Release smoke test
@@ -395,6 +426,7 @@ Run the same gate used by CI from the repository root:
 
 Set `NVIM_BIN=/path/to/nvim` to test another Neovim executable. The suite loads
 every plugin after restoring the selected version-specific lockfile without
-installing Mason tools, then checks both
-Tree-sitter paths, commands, custom filetypes, virtual-environment cleanup,
-Dadbod storage, the minimap, and a byte-preserving hex-edit round trip.
+installing Mason tools, then checks both Tree-sitter paths, commands, custom
+filetypes, virtual-environment cleanup, Dadbod storage, native/Flatpak install
+targets, the live Markdown preview server and browser bridge, the minimap, and
+a byte-preserving hex-edit round trip.

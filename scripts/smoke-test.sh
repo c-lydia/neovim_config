@@ -13,8 +13,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$test_root/config" "$test_root/venv/bin"
-ln -s "$repo_root" "$test_root/config/nvim"
+mkdir -p "$test_root/home" "$test_root/venv/bin"
+WORKBENCH_INSTALL_HOME="$test_root/home" XDG_CONFIG_HOME="$test_root/config" \
+  "$repo_root/scripts/install.sh" --both --copy >/dev/null
+[[ -d "$test_root/config/nvim" && ! -L "$test_root/config/nvim" ]]
+[[ -d "$test_root/home/.var/app/io.neovim.nvim/config/nvim" ]]
 ln -s "$nvim_path" "$test_root/venv/bin/python"
 
 XDG_CONFIG_HOME="$test_root/config" \

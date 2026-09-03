@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.0-rc.3] - 2026-09-03
+
+### Fixed
+
+- Install Markdown Preview's prebuilt server synchronously without requiring
+  Node/npm, including inside the Neovim Flatpak.
+- Open Markdown preview URLs through Neovim's desktop handler so Flatpak uses
+  its OpenURI portal and failures retain a manually usable URL.
+- Bootstrap lazy.nvim at its published lock revision and keep smoke-test copies
+  from rewriting either source lockfile.
+
+### Added
+
+- A safe installer for native Neovim, Flatpak Neovim, or both.
+- End-to-end smoke coverage for the Markdown preview server, browser bridge,
+  Flatpak detection, and both installation targets.
+
 ## [0.1.0-rc.2] - 2026-09-03
 
 ### Fixed
@@ -27,5 +44,6 @@ First release candidate of the multi-stack Neovim workbench.
 - CI coverage for Neovim 0.11.6 and 0.12.4.
 - Separate reproducible plugin locks for the legacy and current Tree-sitter branches.
 
+[0.1.0-rc.3]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.3
 [0.1.0-rc.2]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.1

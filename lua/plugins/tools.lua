@@ -234,17 +234,11 @@ return {
   {
     "iamcco/markdown-preview.nvim",
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-    build = function()
-      if vim.fn.executable("node") ~= 1 or vim.fn.executable("npm") ~= 1 then
-        vim.notify(
-          "markdown-preview.nvim build skipped: install node and npm to enable browser preview",
-          vim.log.levels.WARN
-        )
-        return
-      end
-      vim.fn["mkdp#util#install"]()
-    end,
+    -- A colon command makes Lazy load the plugin before calling its autoload
+    -- installer. The synchronous variant prevents a first-run race.
+    build = ":call mkdp#util#install_sync(v:true)",
     init = function()
+      require("workbench.platform").configure_markdown_preview()
       vim.g.mkdp_filetypes = { "markdown" }
       vim.g.mkdp_theme = "dark"
       vim.g.mkdp_echo_preview_url = 1

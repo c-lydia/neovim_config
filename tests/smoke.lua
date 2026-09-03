@@ -15,7 +15,10 @@ end
 
 local version = vim.version()
 local is_nvim_012 = vim.fn.has("nvim-0.12") == 1
-local expected_lockfile = vim.fn.stdpath("config")
+local configured_lockfile = vim.fn.stdpath("config")
+  .. (is_nvim_012 and "/lazy-lock-0.12.json" or "/lazy-lock.json")
+local expected_root = vim.env.NVIM_RC_ROOT or vim.fn.stdpath("config")
+local expected_lockfile = expected_root
   .. (is_nvim_012 and "/lazy-lock-0.12.json" or "/lazy-lock.json")
 local lock = vim.json.decode(table.concat(vim.fn.readfile(expected_lockfile), "\n"))
 
@@ -55,7 +58,7 @@ run_check("load every plugin", function()
   vim.wait(500)
 
   check(
-    normalize(lazy_config.options.lockfile) == normalize(expected_lockfile),
+    normalize(lazy_config.options.lockfile) == normalize(configured_lockfile),
     "wrong lockfile selected: " .. tostring(lazy_config.options.lockfile)
   )
 
@@ -160,6 +163,76 @@ run_check("Dadbod credential storage", function()
     not vim.startswith(configured .. "/", normalize(vim.fn.stdpath("config")) .. "/"),
     "Dadbod credentials would be written inside the Git checkout"
   )
+end)
+
+run_check("Flatpak detection and Markdown browser bridge", function()
+  local platform = require("workbench.platform")
+  local original_flatpak_id = vim.env.FLATPAK_ID
+  vim.env.FLATPAK_ID = "io.neovim.nvim"
+  check(platform.is_flatpak(), "Flatpak environment was not detected")
+  vim.env.FLATPAK_ID = original_flatpak_id
+
+  check(
+    vim.g.mkdp_browserfunc == "WorkbenchMarkdownPreviewOpen",
+    "Markdown preview is not using the workbench browser bridge"
+  )
+  check(
+    vim.fn.exists("*WorkbenchMarkdownPreviewOpen") == 1,
+    "Markdown preview browser bridge was not registered"
+  )
+
+  local original_open = vim.ui.open
+  local opened_url
+  vim.ui.open = function(url)
+    opened_url = url
+    return {}, nil
+  end
+  local ok, err = pcall(vim.fn.WorkbenchMarkdownPreviewOpen, "http://localhost:8765/page/1")
+  vim.ui.open = original_open
+
+  check(ok, "Markdown browser bridge failed: " .. tostring(err))
+  check(opened_url == "http://localhost:8765/page/1", "Markdown browser bridge opened the wrong URL")
+end)
+
+run_check("Markdown preview end to end", function()
+  local original_open = vim.ui.open
+  local opened_url
+  local ok, err = xpcall(function()
+    vim.ui.open = function(url)
+      opened_url = url
+      return {}, nil
+    end
+
+    vim.cmd("enew")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "# Release preview", "", "Flatpak smoke test." })
+    vim.bo.filetype = "markdown"
+    check(vim.fn.exists(":MarkdownPreview") == 2, "missing buffer command :MarkdownPreview")
+    vim.cmd("MarkdownPreview")
+    check(vim.wait(8000, function() return opened_url ~= nil end, 100), "preview server did not open a URL")
+    check(
+      opened_url and opened_url:match("^http://localhost:%d+/page/%d+$") ~= nil,
+      "preview server returned an invalid URL: " .. tostring(opened_url)
+    )
+
+    if opened_url and vim.fn.executable("curl") == 1 then
+      local response
+      vim.system({
+        "curl", "--fail", "--silent", "--show-error", "--max-time", "5", opened_url,
+      }, { text = true }, function(result) response = result end)
+      check(vim.wait(6000, function() return response ~= nil end, 100), "preview page request timed out")
+      response = response or {}
+      check(response.code == 0, "preview page request failed: " .. tostring(response.stderr))
+      check(
+        response.stdout and response.stdout:find("<!DOCTYPE html", 1, true) ~= nil,
+        "preview server did not return its HTML application"
+      )
+    end
+  end, debug.traceback)
+
+  vim.ui.open = original_open
+  pcall(vim.cmd, "MarkdownPreviewStop")
+  pcall(vim.cmd, "bwipeout!")
+  if not ok then error(err) end
 end)
 
 run_check("inherited virtual environment cleanup", function()
