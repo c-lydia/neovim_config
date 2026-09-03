@@ -231,7 +231,16 @@ return {
   {
     "iamcco/markdown-preview.nvim",
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-    build = function() vim.fn["mkdp#util#install"]() end,
+    build = function()
+      if vim.fn.executable("node") ~= 1 or vim.fn.executable("npm") ~= 1 then
+        vim.notify(
+          "markdown-preview.nvim build skipped: install node and npm to enable browser preview",
+          vim.log.levels.WARN
+        )
+        return
+      end
+      vim.fn["mkdp#util#install"]()
+    end,
     init = function()
       vim.g.mkdp_filetypes = { "markdown" }
       vim.g.mkdp_theme = "dark"

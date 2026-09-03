@@ -7,6 +7,7 @@ return {
     config = function()
       require("catppuccin").setup({
         flavour = "mocha",   -- latte | frappe | macchiato | mocha
+        auto_integrations = false,
         integrations = {
           treesitter  = true,
           native_lsp  = { enabled = true },
