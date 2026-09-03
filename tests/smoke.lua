@@ -15,8 +15,36 @@ end
 
 local version = vim.version()
 local is_nvim_012 = vim.fn.has("nvim-0.12") == 1
+local expected_lockfile = vim.fn.stdpath("config")
+  .. (is_nvim_012 and "/lazy-lock-0.12.json" or "/lazy-lock.json")
+local lock = vim.json.decode(table.concat(vim.fn.readfile(expected_lockfile), "\n"))
+
+local function plugin_revision(plugin)
+  local result = vim.system({ "git", "-C", plugin.dir, "rev-parse", "HEAD" }, { text = true }):wait()
+  return result.code, (result.stdout or ""):gsub("%s+$", "")
+end
 
 check(vim.fn.has("nvim-0.11.3") == 1, "Neovim 0.11.3 or newer is required")
+
+run_check("restore locked plugin revisions", function()
+  local lazy_config = require("lazy.core.config")
+  local drifted = {}
+
+  for name, plugin in pairs(lazy_config.plugins) do
+    if plugin._.installed and lock[name] then
+      local result_code, actual = plugin_revision(plugin)
+      if result_code == 0 and actual ~= lock[name].commit then
+        drifted[#drifted + 1] = name
+      end
+    end
+  end
+
+  if #drifted > 0 then
+    table.sort(drifted)
+    require("lazy").restore({ plugins = drifted, wait = true, show = false })
+    print("RC_SMOKE_RESTORED plugins=" .. table.concat(drifted, ","))
+  end
+end)
 
 run_check("load every plugin", function()
   local lazy_config = require("lazy.core.config")
@@ -26,14 +54,11 @@ run_check("load every plugin", function()
   require("lazy.core.loader").load(plugin_names, { start = "release-smoke" }, { force = true })
   vim.wait(500)
 
-  local expected_lockfile = vim.fn.stdpath("config")
-    .. (is_nvim_012 and "/lazy-lock-0.12.json" or "/lazy-lock.json")
   check(
     normalize(lazy_config.options.lockfile) == normalize(expected_lockfile),
     "wrong lockfile selected: " .. tostring(lazy_config.options.lockfile)
   )
 
-  local lock = vim.json.decode(table.concat(vim.fn.readfile(expected_lockfile), "\n"))
   for _, name in ipairs(plugin_names) do
     local plugin = lazy_config.plugins[name]
     check(plugin._.installed, "plugin is not installed: " .. name)
@@ -41,10 +66,16 @@ run_check("load every plugin", function()
     check(lock[name] ~= nil, "plugin is not present in the selected lockfile: " .. name)
 
     if lock[name] then
-      local result = vim.system({ "git", "-C", plugin.dir, "rev-parse", "HEAD" }, { text = true }):wait()
-      local actual = (result.stdout or ""):gsub("%s+$", "")
-      check(result.code == 0, "could not read plugin revision: " .. name)
-      check(actual == lock[name].commit, "plugin revision does not match lockfile: " .. name)
+      local result_code, actual = plugin_revision(plugin)
+      check(result_code == 0, "could not read plugin revision: " .. name)
+      check(
+        actual == lock[name].commit,
+        ("plugin revision does not match lockfile: %s (expected %s, got %s)"):format(
+          name,
+          lock[name].commit,
+          actual
+        )
+      )
     end
   end
 

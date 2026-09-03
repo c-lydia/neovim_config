@@ -394,6 +394,7 @@ Run the same gate used by CI from the repository root:
 ```
 
 Set `NVIM_BIN=/path/to/nvim` to test another Neovim executable. The suite loads
-every locked plugin without installing Mason tools, then checks both
+every plugin after restoring the selected version-specific lockfile without
+installing Mason tools, then checks both
 Tree-sitter paths, commands, custom filetypes, virtual-environment cleanup,
 Dadbod storage, the minimap, and a byte-preserving hex-edit round trip.

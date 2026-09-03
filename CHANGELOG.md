@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0-rc.2] - 2026-09-03
+
+### Fixed
+
+- Restore cached plugin checkouts from the selected lockfile before release
+  smoke assertions, keeping tag builds reproducible after a CI cache hit.
+- Include the expected and actual plugin revisions in lock mismatch failures.
+
 ## [0.1.0-rc.1] - 2026-09-03
 
 First release candidate of the multi-stack Neovim workbench.
@@ -19,4 +27,5 @@ First release candidate of the multi-stack Neovim workbench.
 - CI coverage for Neovim 0.11.6 and 0.12.4.
 - Separate reproducible plugin locks for the legacy and current Tree-sitter branches.
 
+[0.1.0-rc.2]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.1
