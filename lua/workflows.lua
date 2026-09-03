@@ -1,6 +1,15 @@
 local M = {}
 
-local original_path = vim.env.PATH
+local function without_venv_bin(path, venv)
+  if not venv or venv == "" then return path end
+  local venv_bin = vim.fn.fnamemodify(venv, ":p"):gsub("/$", "") .. "/bin"
+  return table.concat(vim.tbl_filter(function(entry)
+    return vim.fn.fnamemodify(entry, ":p"):gsub("/$", "") ~= venv_bin
+  end, vim.split(path or "", ":", { plain = true, trimempty = true })), ":")
+end
+
+local original_path = without_venv_bin(vim.env.PATH, vim.env.VIRTUAL_ENV)
+local original_python_host = vim.g.python3_host_prog
 
 local function executable(name)
   if vim.fn.executable(name) == 1 then return true end
@@ -77,7 +86,7 @@ function M.activate_venv(path)
   end
 
   vim.env.VIRTUAL_ENV = path
-  vim.env.PATH = path .. "/bin:" .. original_path
+  vim.env.PATH = path .. "/bin" .. (original_path ~= "" and (":" .. original_path) or "")
   vim.g.python3_host_prog = python
   restart_pyright()
   vim.notify("Activated venv: " .. vim.fn.fnamemodify(path, ":t"))
@@ -150,7 +159,7 @@ end, { nargs = "?", complete = "dir", desc = "Select or activate a project venv"
 vim.api.nvim_create_user_command("VenvDeactivate", function()
   vim.env.VIRTUAL_ENV = nil
   vim.env.PATH = original_path
-  vim.g.python3_host_prog = nil
+  vim.g.python3_host_prog = original_python_host
   restart_pyright()
   vim.notify("Virtual environment deactivated")
 end, { desc = "Deactivate the current project venv" })

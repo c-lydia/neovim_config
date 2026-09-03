@@ -1,0 +1,40 @@
+name: Smoke test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Neovim ${{ matrix.neovim }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim:
+          - v0.11.6
+          - v0.12.4
+
+    steps:
+      - name: Check out configuration
+        uses: actions/checkout@v5
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+
+      - name: Cache plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/nvim/lazy
+          key: lazy-${{ runner.os }}-${{ matrix.neovim }}-${{ hashFiles('lazy-lock*.json') }}
+
+      - name: Run release smoke test
+        run: ./scripts/smoke-test.sh

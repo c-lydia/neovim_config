@@ -1,6 +1,6 @@
 # Neovim Multi-Stack Workbench
 
-A Neovim 0.11 configuration for application development, embedded systems,
+A Neovim 0.11.3+ configuration for application development, embedded systems,
 reverse engineering, cybersecurity, cryptography, databases, and technical
 writing. It includes LSP completion, formatting, linting, Tree-sitter,
 debugging, terminals, Git, database tools, safe hex editing, disassembly, and a
@@ -18,7 +18,8 @@ GNOME launcher for independent tiled IDE windows.
 
 ## Requirements
 
-Neovim 0.11 or newer is required. On Ubuntu, install the common native tools:
+Neovim 0.11.3 or newer is required; both the 0.11 and 0.12 release lines are
+tested. On Ubuntu, install the common native tools:
 
 ```bash
 sudo apt install \
@@ -30,6 +31,11 @@ sudo apt install \
 
 Docker workflows require Docker Engine and the Compose v2 plugin (`docker
 compose version` must work).
+
+Neovim 0.12 uses Tree-sitter's rewritten `main` branch, which requires
+`tree-sitter-cli` 0.26.1 or newer. Install the CLI with your system or language
+package manager rather than npm. Neovim 0.11 automatically
+uses Tree-sitter's frozen compatibility branch and does not need that new API.
 
 For the security and cryptography stacks, install the runtimes you actually
 use:
@@ -78,6 +84,11 @@ Useful maintenance commands:
 :checkhealth
 :LspInfo
 ```
+
+The configuration automatically selects `lazy-lock.json` on Neovim 0.11 and
+`lazy-lock-0.12.json` on Neovim 0.12 or newer. Keep both files: the two
+Tree-sitter branches use incompatible APIs, while every other plugin remains
+reproducibly pinned.
 
 ## Desktop workspace
 
@@ -175,6 +186,7 @@ Useful terminal helpers mirror the Neovim commands:
 | `<leader>e` | Toggle file tree |
 | `<leader>cf` | Format current file |
 | `<leader>mp` | Toggle Markdown preview in the browser |
+| `<leader>mm` | Toggle the code minimap |
 | `<leader>ca` | LSP code action |
 | `<leader>rn` | Rename symbol |
 | `gd` / `gr` | Peek definition / references |
@@ -342,8 +354,11 @@ reliable completion database.
 ### PostgreSQL
 
 `<leader>db` opens Dadbod UI. Add a connection with
-`:DBUIAddConnection`. Keep credentials outside the repository; environment
-variables or a protected local SQLS config are preferable.
+`:DBUIAddConnection`. Dadbod state is stored under Neovim's data directory
+(`~/.local/share/nvim/db_ui` on a default Linux installation), not in this Git
+checkout. If an older installation has `~/.config/nvim/db_ui/connections.json`,
+migrate it to the data directory and make sure it is not tracked. Environment
+variables or a protected local SQLS config are preferable for secrets.
 
 ### Python virtual environments
 
@@ -362,9 +377,23 @@ checks `.venv/bin/python` and `venv/bin/python` before falling back to
 - Docker permission denied: make sure the Docker daemon is running and your
   account can access `/var/run/docker.sock` (commonly via the `docker` group),
   then log out and back in after changing group membership.
-- Tree-sitter errors: run `:Lazy sync` followed by `:TSUpdate`. Neovim 0.11 is
-  intentionally pinned to Tree-sitter's compatibility branch.
+- Tree-sitter errors: verify `nvim --version`, run `:Lazy restore`, and then run
+  `:TSUpdate`. Neovim 0.11 is pinned to the compatibility branches; Neovim
+  0.12 uses the rewritten `main` branches and needs `tree-sitter-cli` 0.26.1+.
 - Markdown preview fails: run `:Lazy build markdown-preview.nvim`, reopen the
   Markdown file, and press `<leader>mp`. The preview URL is also printed in
   Neovim so it can be opened manually if desktop browser launching is blocked.
 - Clipboard unavailable: install the Wayland clipboard provider (`wl-clipboard`).
+
+## Release smoke test
+
+Run the same gate used by CI from the repository root:
+
+```bash
+./scripts/smoke-test.sh
+```
+
+Set `NVIM_BIN=/path/to/nvim` to test another Neovim executable. The suite loads
+every locked plugin without installing Mason tools, then checks both
+Tree-sitter paths, commands, custom filetypes, virtual-environment cleanup,
+Dadbod storage, the minimap, and a byte-preserving hex-edit round trip.

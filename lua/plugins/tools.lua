@@ -220,8 +220,11 @@ return {
     "kristijanhusak/vim-dadbod-ui",
     dependencies = { "tpope/vim-dadbod" },
     cmd  = { "DBUI", "DBUIToggle", "DBUIAddConnection" },
-    config = function()
-      vim.g.db_ui_save_location     = vim.fn.expand("~/.config/nvim/db_ui")
+    init = function()
+      -- connections.json may contain database credentials. Keep it with
+      -- application data instead of inside this Git repository. These globals
+      -- must be set before plugin/db_ui.vim reads them.
+      vim.g.db_ui_save_location     = vim.fn.stdpath("data") .. "/db_ui"
       vim.g.db_ui_use_nerd_fonts    = 1
       vim.g.db_ui_show_database_icon = 1
     end,
@@ -273,12 +276,20 @@ return {
 
   -- ── Minimap / code overview ──────────────────────────────────
   {
-    "gorbit99/codewindow.nvim",
-    config = function()
-      local cw = require("codewindow")
-      cw.setup({ auto_enable = false })
-      vim.keymap.set("n", "<leader>mm", cw.toggle_minimap,
-        { desc = "Toggle minimap", noremap = true, silent = true })
+    "Isrothy/neominimap.nvim",
+    version = "v3.16.0",
+    lazy = false,
+    init = function()
+      vim.g.neominimap = {
+        auto_enable = false,
+        notification_level = vim.log.levels.WARN,
+        -- Neominimap's optional Tree-sitter integration follows the rewritten
+        -- API. The minimap itself remains fully usable on Neovim 0.11.
+        treesitter = { enabled = vim.fn.has("nvim-0.12") == 1 },
+      }
     end,
+    keys = {
+      { "<leader>mm", "<cmd>Neominimap Toggle<cr>", desc = "Toggle minimap" },
+    },
   },
 }

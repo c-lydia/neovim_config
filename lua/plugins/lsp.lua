@@ -89,6 +89,10 @@ return {
     "mason-org/mason-lspconfig.nvim",
     dependencies = { "mason-org/mason.nvim", "neovim/nvim-lspconfig" },
     config = function()
+      -- Release smoke tests deliberately run without network access or tool
+      -- installation. Avoid making Mason refresh an empty registry there.
+      if vim.env.NVIM_SKIP_TOOL_INSTALL == "1" then return end
+
       local mason_servers = vim.tbl_filter(function(name)
         if name == "yls" then return false end
         if name == "asm_lsp" and vim.fn.executable("cargo") ~= 1 then return false end
@@ -97,7 +101,7 @@ return {
       end, lsp_servers)
       require("mason-lspconfig").setup({
         automatic_enable = false,
-        ensure_installed = vim.env.NVIM_SKIP_TOOL_INSTALL == "1" and {} or mason_servers,
+        ensure_installed = mason_servers,
       })
     end,
   },

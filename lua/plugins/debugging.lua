@@ -47,14 +47,18 @@ return {
         command = executable("debugpy-adapter"),
       }
 
-      dap.adapters.delve = {
-        type = "server",
-        port = "${port}",
-        executable = {
-          command = executable("dlv"),
-          args = { "dap", "-l", "127.0.0.1:${port}" },
-        },
-      }
+      local delve = executable("dlv")
+      local has_delve = vim.fn.executable(delve) == 1
+      if has_delve then
+        dap.adapters.delve = {
+          type = "server",
+          port = "${port}",
+          executable = {
+            command = delve,
+            args = { "dap", "-l", "127.0.0.1:${port}" },
+          },
+        }
+      end
 
       local native_configurations = {
         {
@@ -113,20 +117,22 @@ return {
       }
       dap.configurations.sage = dap.configurations.python
 
-      dap.configurations.go = {
-        {
-          name = "Debug current Go file",
-          type = "delve",
-          request = "launch",
-          program = "${file}",
-        },
-        {
-          name = "Debug Go package",
-          type = "delve",
-          request = "launch",
-          program = "${workspaceFolder}",
-        },
-      }
+      if has_delve then
+        dap.configurations.go = {
+          {
+            name = "Debug current Go file",
+            type = "delve",
+            request = "launch",
+            program = "${file}",
+          },
+          {
+            name = "Debug Go package",
+            type = "delve",
+            request = "launch",
+            program = "${workspaceFolder}",
+          },
+        }
+      end
 
       local launch_json = vim.fn.getcwd() .. "/.vscode/launch.json"
       if vim.fn.filereadable(launch_json) == 1 then
