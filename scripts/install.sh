@@ -4,10 +4,11 @@ set -euo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 install_mode='native'
 install_method='link'
+workspace_only=false
 
 usage() {
   printf '%s\n' \
-    'Usage: ./scripts/install.sh [--native | --flatpak | --both] [--link | --copy]' \
+    'Usage: ./scripts/install.sh [--native | --flatpak | --both | --workspace-only] [--link | --copy]' \
     '' \
     'Install this workbench as the Neovim configuration.' \
     '' \
@@ -15,12 +16,14 @@ usage() {
     '  --native    Install for a native Neovim (default)' \
     '  --flatpak   Install for io.neovim.nvim from Flathub' \
     '  --both      Install for native and Flatpak Neovim' \
+    '  --workspace-only  Install just the nvim-workspace launcher' \
     '' \
     'Methods:' \
     '  --link      Link both targets to this checkout (default)' \
     '  --copy      Copy this checkout into each target' \
     '' \
-    'An existing target is never overwritten; move it aside before retrying.'
+    'All modes install nvim-workspace into ~/.local/bin.' \
+    'An existing configuration is never overwritten; existing custom launchers are kept.'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -33,6 +36,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --both)
       install_mode='both'
+      ;;
+    --workspace-only)
+      workspace_only=true
       ;;
     --link)
       install_method='link'
@@ -81,17 +87,44 @@ install_target() {
   printf 'Installed %s configuration (%s): %s\n' "$label" "$install_method" "$target"
 }
 
-case $install_mode in
-  native)
-    install_target 'native Neovim' "$native_config"
-    ;;
-  flatpak)
-    install_target 'Flatpak Neovim' "$flatpak_config"
-    printf 'Start it with: flatpak run io.neovim.nvim\n'
-    ;;
-  both)
-    install_target 'native Neovim' "$native_config"
-    install_target 'Flatpak Neovim' "$flatpak_config"
-    printf 'Start Flatpak Neovim with: flatpak run io.neovim.nvim\n'
-    ;;
-esac
+install_workspace() {
+  local source="$repo_root/scripts/nvim-workspace"
+  local target="$install_home/.local/bin/nvim-workspace"
+
+  if [[ -e $target || -L $target ]]; then
+    if [[ $target -ef $source ]]; then
+      printf 'Workspace launcher already uses this checkout: %s\n' "$target"
+    else
+      printf 'Keeping existing workspace launcher: %s\n' "$target"
+    fi
+    return
+  fi
+
+  mkdir -p "$(dirname -- "$target")"
+  if [[ $install_method == 'copy' ]]; then
+    install -m 755 "$source" "$target"
+  else
+    ln -s "$source" "$target"
+  fi
+  printf 'Installed workspace launcher: %s\n' "$target"
+  printf 'Ensure ~/.local/bin is on PATH, then run: nvim-workspace DIRECTORY\n'
+}
+
+if ! $workspace_only; then
+  case $install_mode in
+    native)
+      install_target 'native Neovim' "$native_config"
+      ;;
+    flatpak)
+      install_target 'Flatpak Neovim' "$flatpak_config"
+      printf 'Start it with: flatpak run io.neovim.nvim\n'
+      ;;
+    both)
+      install_target 'native Neovim' "$native_config"
+      install_target 'Flatpak Neovim' "$flatpak_config"
+      printf 'Start Flatpak Neovim with: flatpak run io.neovim.nvim\n'
+      ;;
+  esac
+fi
+
+install_workspace

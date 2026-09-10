@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage: nvim-workspace [DIRECTORY] [--gui APP] [--flatpak APP_ID]
+
+Open three GNOME Terminal windows: Neovim, a Neovim terminal, and a shell.
+Run from a graphical desktop session. DIRECTORY defaults to the current directory.
+Neovim is found on PATH, or from its Flatpak if no native executable is available.
+Set NVIM_BIN to select a specific native Neovim executable.
+USAGE
+}
+
+fail() { printf 'nvim-workspace: %s\n' "$*" >&2; exit 1; }
+
+project=''
+gui_apps=()
+flatpak_apps=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -h|--help) usage; exit 0 ;;
+    --gui|--flatpak)
+      option=$1
+      [[ $# -ge 2 && $2 != --* ]] || fail "$option requires an application"
+      if [[ $option == --gui ]]; then gui_apps+=("$2"); else flatpak_apps+=("$2"); fi
+      shift
+      ;;
+    -*) fail "unknown option: $1" ;;
+    *)
+      [[ -z $project ]] || fail 'only one project directory can be supplied'
+      project=$1
+      ;;
+  esac
+  shift
+done
+
+project=${project:-$PWD}
+[[ -d $project ]] || fail "not a directory: $project"
+project=$(cd -- "$project" && pwd -P)
+[[ -n ${DISPLAY:-} || -n ${WAYLAND_DISPLAY:-} ]] ||
+  fail 'a graphical desktop session is required; over SSH, run nvim directly'
+command -v gnome-terminal >/dev/null 2>&1 ||
+  fail 'GNOME Terminal is required. On Ubuntu: sudo apt install gnome-terminal'
+
+nvim_command=()
+if nvim_path=$(command -v -- "${NVIM_BIN:-nvim}"); then
+  nvim_command=("$nvim_path")
+elif [[ -z ${NVIM_BIN:-} ]] && command -v flatpak >/dev/null 2>&1 &&
+  flatpak info io.neovim.nvim >/dev/null 2>&1; then
+  nvim_command=(flatpak run io.neovim.nvim)
+else
+  fail "Neovim executable not found: ${NVIM_BIN:-nvim}"
+fi
+
+for app in "${gui_apps[@]}"; do
+  command -v -- "$app" >/dev/null 2>&1 || command -v gtk-launch >/dev/null 2>&1 ||
+    fail "gtk-launch is required to open desktop application: $app"
+done
+if [[ ${#flatpak_apps[@]} -gt 0 ]]; then
+  command -v flatpak >/dev/null 2>&1 || fail 'Flatpak is required for --flatpak'
+fi
+
+gnome-terminal --window --working-directory="$project" --title='Neovim Code' \
+  -- "${nvim_command[@]}"
+gnome-terminal --window --working-directory="$project" --title='Neovim Terminal' \
+  -- "${nvim_command[@]}" -c terminal -c startinsert
+gnome-terminal --window --working-directory="$project" --title='Project Shell'
+
+for app in "${gui_apps[@]}"; do
+  if command -v -- "$app" >/dev/null 2>&1; then
+    (cd -- "$project" && exec "$app") &
+  else
+    gtk-launch "$app" &
+  fi
+done
+for app in "${flatpak_apps[@]}"; do
+  flatpak run "$app" &
+done

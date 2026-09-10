@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.1] - 2026-09-10 — dude_where's_my_workspace
+
+### Fixed
+
+- Include and install `nvim-workspace`, which was previously documented but
+  existed only as a separate workstation script. The portable launcher uses
+  GNOME Terminal without personal desktop entries or a fixed Neovim path.
+- Add `--workspace-only` to install the launcher for an existing configuration,
+  and document PATH setup and the graphical-session requirement.
+
 ## [0.1.0-rc.4] - 2026-09-03
 
 ### Fixed
@@ -53,6 +63,8 @@ First release candidate of the multi-stack Neovim workbench.
 - CI coverage for Neovim 0.11.6 and 0.12.4.
 - Separate reproducible plugin locks for the legacy and current Tree-sitter branches.
 
+[0.1.1]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.1
+[0.1.0-rc.4]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.4
 [0.1.0-rc.3]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.3
 [0.1.0-rc.2]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.0-rc.1

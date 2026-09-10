@@ -24,6 +24,9 @@ jobs:
       - name: Check out configuration
         uses: actions/checkout@v5
 
+      - name: Test workspace launcher and installer
+        run: python3 -m unittest discover -s tests -p 'test_workspace.py'
+
       - name: Install Neovim
         uses: rhysd/action-setup-vim@v1
         with:

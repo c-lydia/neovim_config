@@ -77,7 +77,8 @@ nvim README.md
 
 The installer never overwrites an existing configuration. Move the old target
 aside first if necessary. Pass `--copy` if an independent copy is preferable
-to the default link.
+to the default link. It also installs `nvim-workspace` into `~/.local/bin`,
+preserving any existing custom launcher.
 
 ### Flatpak Neovim
 
@@ -121,8 +122,29 @@ reproducibly pinned.
 
 ## Desktop workspace
 
-Run the launcher from a terminal or choose **Neovim Workspace** from GNOME's
-application menu:
+The portable launcher uses GNOME Terminal and a graphical desktop session,
+including on a Jetson desktop. Install the terminal if needed:
+
+```bash
+sudo apt install gnome-terminal
+```
+
+If the config was installed before the launcher was included, run these from
+the updated checkout (or `~/.config/nvim` when cloned there):
+
+```bash
+./scripts/install.sh --workspace-only
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Add the `export` line to `~/.bashrc` or `~/.zshrc` to keep it in new shells.
+The launcher script can also be copied by itself to `~/.local/bin/nvim-workspace`
+and made executable with `chmod +x`. It has no dependency on personal desktop
+shortcuts or a fixed Neovim installation path. Set `NVIM_BIN=/path/to/nvim`
+to choose a native executable; otherwise it detects `nvim` on PATH and falls
+back to the Neovim Flatpak if available.
+
+Run it from a desktop terminal:
 
 ```bash
 nvim-workspace ~/projects/my-project
@@ -133,6 +155,9 @@ It opens three independent tiled-workspace-friendly windows:
 1. A normal Neovim code IDE.
 2. A separate Neovim instance starting in a terminal buffer.
 3. A plain shell terminal.
+
+These are separate windows; automatic tiling and application-menu shortcuts
+require separate desktop setup. Over a plain SSH session, use `nvim` directly.
 
 Optional native GUI apps can be launched into the same GNOME workspace:
 
@@ -154,11 +179,13 @@ nvim-workspace ~/projects/my-project \
 
 Native GUI apps cannot live inside terminal Neovim buffers; they remain normal
 GNOME windows so input, rendering, clipboard, and application isolation keep
-working correctly. Tile them with `Super+Arrow` or the numeric keypad tiling
-shortcuts. The focused desktop window has a neon-blue outline. Inside Neovim,
-the active split has a bright separator and cursor line while inactive splits
-dim.
+working correctly. Tile them using your desktop's window controls. Inside
+Neovim, the active split has a bright separator and cursor line while inactive
+splits dim.
 
+The following shortcuts and appearance settings describe the original
+workstation's optional desktop setup; the config installer does not install
+them. That setup adds a neon-blue outline to the focused desktop window.
 Two Tiling Assistant layouts make a desktop-level side-by-side workspace
 available from inside Neovim or any other app:
 
@@ -428,8 +455,12 @@ checks `.venv/bin/python` and `venv/bin/python` before falling back to
 Run the same gate used by CI from the repository root:
 
 ```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_workspace.py'
 ./scripts/smoke-test.sh
 ```
+
+The launcher tests check installation, preservation of existing files, executable
+discovery, argument quoting, and errors without opening desktop windows.
 
 Set `NVIM_BIN=/path/to/nvim` to test another Neovim executable. The suite loads
 every plugin after restoring the selected version-specific lockfile without
