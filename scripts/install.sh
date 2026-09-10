@@ -5,10 +5,11 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 install_mode='native'
 install_method='link'
 workspace_only=false
+desktop=false
 
 usage() {
   printf '%s\n' \
-    'Usage: ./scripts/install.sh [--native | --flatpak | --both | --workspace-only] [--link | --copy]' \
+    'Usage: ./scripts/install.sh [--native | --flatpak | --both | --workspace-only | --desktop-only] [--desktop] [--link | --copy]' \
     '' \
     'Install this workbench as the Neovim configuration.' \
     '' \
@@ -17,13 +18,16 @@ usage() {
     '  --flatpak   Install for io.neovim.nvim from Flathub' \
     '  --both      Install for native and Flatpak Neovim' \
     '  --workspace-only  Install just the nvim-workspace launcher' \
+    '  --desktop         Also install the terminal, prompt, menus, and tiling settings' \
+    '  --desktop-only    Install those desktop settings for an existing config' \
     '' \
     'Methods:' \
     '  --link      Link both targets to this checkout (default)' \
     '  --copy      Copy this checkout into each target' \
     '' \
     'All modes install nvim-workspace into ~/.local/bin.' \
-    'An existing configuration is never overwritten; existing custom launchers are kept.'
+    'An existing Neovim configuration is never overwritten.' \
+    'Desktop installation backs up and upgrades launchers; other modes keep custom launchers.'
 }
 
 while [[ $# -gt 0 ]]; do
@@ -39,6 +43,13 @@ while [[ $# -gt 0 ]]; do
       ;;
     --workspace-only)
       workspace_only=true
+      ;;
+    --desktop)
+      desktop=true
+      ;;
+    --desktop-only)
+      workspace_only=true
+      desktop=true
       ;;
     --link)
       install_method='link'
@@ -127,4 +138,8 @@ if ! $workspace_only; then
   esac
 fi
 
-install_workspace
+if $desktop; then
+  python3 "$repo_root/scripts/install-desktop.py"
+else
+  install_workspace
+fi

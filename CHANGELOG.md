@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.2] - 2026-09-10 — dude_i_found_your_vibe
+
+### Added
+
+- An optional desktop installer for the original Ptyxis appearance: DejaVu Sans
+  Mono 10, Xterm palette, the neon-workbench Zsh prompt and helpers, application
+  menu entries, and browser/GUI/four-window layouts.
+- A cyan `#04d9ff`, 4-pixel focus border using Tiling Assistant where supported,
+  with a bundled GNOME 40–50 compatibility extension for older installations.
+- Private backups and a restore command for modified files and settings.
+- Installation and settings integration tests, real Zsh prompt checks, and
+  focus-border lifecycle tests in CI.
+
+### Fixed
+
+- Prefer native Ptyxis or its installed Flatpak in the launcher, while retaining
+  an explicit GNOME Terminal fallback for desktop appearance installation.
+- Package the desktop setup that earlier releases only described, and support
+  desktop entry launchers without workstation-specific home paths.
+
+[0.1.2]: https://github.com/c-lydia/neovim_config/releases/tag/v0.1.2
+
 ## [0.1.1] - 2026-09-10 — dude_where's_my_workspace
 
 ### Fixed

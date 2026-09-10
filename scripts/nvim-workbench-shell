@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export ZDOTDIR="${XDG_CONFIG_HOME:-$HOME/.config}/nvim-workbench/zsh"
+if [[ ! -r "$ZDOTDIR/.zshrc" ]]; then
+  printf 'nvim-workbench-shell: run scripts/install.sh --desktop-only first\n' >&2
+  exit 1
+fi
+exec zsh "$@"

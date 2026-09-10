@@ -120,115 +120,161 @@ The configuration automatically selects `lazy-lock.json` on Neovim 0.11 and
 Tree-sitter branches use incompatible APIs, while every other plugin remains
 reproducibly pinned.
 
-## Desktop workspace
+## Desktop workspace and appearance
 
-The portable launcher uses GNOME Terminal and a graphical desktop session,
-including on a Jetson desktop. Install the terminal if needed:
+The optional desktop installer recreates the workstation appearance as well as
+installing the launcher:
+
+- Ptyxis with **DejaVu Sans Mono 10** (the original Monospace font resolves to
+  this family), the **Xterm** palette, and dark window appearance.
+- The **neon-workbench** Zsh prompt: cyan identity/path, Git state, Python venv,
+  last-command failures, and a right-aligned clock.
+- A **cyan `#04d9ff`, 4-pixel border** following the focused window.
+- Application-menu entries and three Tiling Assistant layouts, including the
+  original four-window workspace.
+
+Neovim's Catppuccin Mocha theme and plugins remain part of the Neovim config.
+Desktop installation is separate so installing an editor config does not
+implicitly change desktop preferences.
+
+### Install the full appearance on the Jetson
+
+Run in the **Jetson's GNOME desktop session**, as your normal user. Install the
+small native prerequisites:
 
 ```bash
-sudo apt install gnome-terminal
+sudo apt install zsh git python3 dconf-cli fontconfig fonts-dejavu-core
 ```
 
-If the config was installed before the launcher was included, run these from
-the updated checkout (or `~/.config/nvim` when cloned there):
+Install **Ptyxis** through your distribution if available. On an older Ubuntu
+release that does not package it, its [official Flatpak package](https://github.com/flathub/app.devsuite.Ptyxis)
+is another option:
 
 ```bash
-./scripts/install.sh --workspace-only
+sudo apt install flatpak
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user flathub app.devsuite.Ptyxis
+```
+
+From this release's checkout, install the desktop setup for your existing config:
+
+```bash
+./scripts/install.sh --desktop-only
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Add the `export` line to `~/.bashrc` or `~/.zshrc` to keep it in new shells.
-The launcher script can also be copied by itself to `~/.local/bin/nvim-workspace`
-and made executable with `chmod +x`. It has no dependency on personal desktop
-shortcuts or a fixed Neovim installation path. Set `NVIM_BIN=/path/to/nvim`
-to choose a native executable; otherwise it detects `nvim` on PATH and falls
-back to the Neovim Flatpak if available.
-
-Run it from a desktop terminal:
+**Log out and back in once** so GNOME discovers new or updated extensions, then:
 
 ```bash
 nvim-workspace ~/projects/my-project
 ```
 
-It opens three independent tiled-workspace-friendly windows:
+For a fresh editor installation, `./scripts/install.sh --native --desktop`
+installs both parts. The installer reuses an existing Oh My Zsh framework or
+fetches a pinned upstream revision. It reuses a compatible Tiling Assistant
+installation or downloads the release selected for your GNOME Shell version
+from [GNOME Extensions](https://extensions.gnome.org/extension/3733/tiling-assistant/).
+It does not install Snap packages or change your login shell.
 
-1. A normal Neovim code IDE.
-2. A separate Neovim instance starting in a terminal buffer.
-3. A plain shell terminal.
-
-These are separate windows; automatic tiling and application-menu shortcuts
-require separate desktop setup. Over a plain SSH session, use `nvim` directly.
-
-Optional native GUI apps can be launched into the same GNOME workspace:
-
-```bash
-nvim-workspace ~/projects/my-project \
-  --gui org.gnome.Nautilus \
-  --gui firefox
-```
-
-Flatpak applications use their application ID. List installed IDs and then
-pass one or more `--flatpak` options:
+The default desktop installation requires native Ptyxis or its installed Flatpak.
+For a themed GNOME Terminal fallback, explicitly select it:
 
 ```bash
-flatpak list --app --columns=application,name
-nvim-workspace ~/projects/my-project \
-  --flatpak com.brave.Browser \
-  --flatpak md.obsidian.Obsidian
+sudo apt install gnome-terminal
+python3 scripts/install-desktop.py --terminal gnome-terminal
 ```
 
-Native GUI apps cannot live inside terminal Neovim buffers; they remain normal
-GNOME windows so input, rendering, clipboard, and application isolation keep
-working correctly. Tile them using your desktop's window controls. Inside
-Neovim, the active split has a bright separator and cursor line while inactive
-splits dim.
+That fallback matches the font, palette, and prompt, but its window decorations
+remain GNOME Terminal's. Its tiling layouts use the window chooser for terminal
+panes because they do not have Ptyxis's distinct application IDs.
 
-The following shortcuts and appearance settings describe the original
-workstation's optional desktop setup; the config installer does not install
-them. That setup adds a neon-blue outline to the focused desktop window.
-Two Tiling Assistant layouts make a desktop-level side-by-side workspace
-available from inside Neovim or any other app:
+### Windows, borders, and shortcuts
 
-| Key | Desktop layout |
+The full desktop setup opens Neovim code, a Neovim terminal, a browser, and a
+Codex terminal. If the Codex executable is absent, the fourth pane is a themed
+shell. Browser discovery uses installed desktop IDs rather than requiring a
+Snap-specific Firefox shortcut. If no browser is found, install one or use the
+GUI chooser layout. Optional `--gui APP` and `--flatpak APP_ID` arguments still
+open additional applications.
+
+| Shortcut | Action |
 |---|---|
-| `Super+Alt+B` | Tile the focused Ptyxis/Neovim window on the left and open or reuse Firefox on the right |
-| `Super+Alt+G` | Tile the focused Ptyxis/Neovim window on the left and choose an already-open GUI window for the right |
+| `Super+Alt+B` | Neovim beside the browser |
+| `Super+Alt+G` | Neovim beside a window you choose |
+| `Super+Alt+W` | Open/reuse and tile the remembered four-window workspace |
 
-Once the windows are tiled, use `Super+Left` and `Super+Right` to move focus
-between desktop apps. Continue using `Ctrl+h/j/k/l` for splits inside Neovim.
-The layouts are stored in `~/.config/tiling-assistant/layouts.json`; change an
-`appId` there if a different browser or fixed GUI app should replace Firefox.
+Select a project without opening windows using `nvim-workspace DIRECTORY
+--set-only`. Use `nvim-workspace DIRECTORY --layout three` for the original
+three-terminal arrangement. The launcher alone defaults to that arrangement;
+the desktop installer selects the four-window layout.
+
+On newer Tiling Assistant versions, the focus outline uses the extension's
+built-in settings. Older supported versions, including GNOME 42's Tiling
+Assistant 36, lack that feature. The installer supplies **Neon Workbench Focus
+Border**, with separate entry points for GNOME 40–44 and 45–50. The border is
+non-interactive, follows focus/movement/resizing, and hides during overview,
+screen lock, fullscreen, and inactive-workspace transitions. It does not tile
+windows itself. Unknown GNOME versions are reported instead of loading an
+incompatible extension.
+
+The generated layout file is `~/.config/tiling-assistant/layouts.json`. Existing
+unrelated layouts and enabled extensions are retained. Add the PATH export to
+`~/.bashrc` or `~/.zshrc` if needed. `NVIM_WORKSPACE_TERMINAL`, `NVIM_BIN`, and
+`NVIM_WORKSPACE_LAYOUT` override terminal, Neovim executable, and layout
+selection for a particular launch.
+
+### Backups, inspection, and restore
+
+Inspect the detected setup without changing preferences:
+
+```bash
+python3 scripts/install-desktop.py --dry-run
+```
+
+`--no-downloads` reuses installed dependencies; it requires Oh My Zsh to exist
+and reports when Tiling Assistant is unavailable. The desktop installer copies
+managed scripts and assets into `~/.local/bin`, `~/.local/share/nvim-workbench`,
+and `~/.config/nvim-workbench`. It backs up replaced launchers, desktop files,
+layouts, and modified settings under a private timestamped directory in
+`~/.local/state/nvim-workbench/backups/` and prints the manifest path.
+
+Restore a particular installation's appearance changes with:
+
+```bash
+python3 scripts/install-desktop.py --restore /path/printed/by/installer/manifest.json
+```
+
+Framework/extension downloads remain installed after appearance restoration.
+Log out and back in after restoring extensions. Keep backups private: existing
+personal configuration files may contain private data.
 
 ## Oh My Zsh terminal workbench
 
-Oh My Zsh uses the custom `neon-workbench` theme, matching the neon-blue
-desktop focus outline and active Neovim separator. The prompt shows the current
-directory, Git state, active Python environment, last-command failures, and
-time. Git, Docker, Compose, Python, pip, virtualenv, fzf, systemd, sudo,
-colored-man-pages, extract, command-not-found, and directory-jump plugins are
-enabled.
-
-Open a new terminal or reload the configuration with:
-
-```zsh
-source ~/.zshrc
-```
-
-Useful terminal helpers mirror the Neovim commands:
+Workspace shells use Zsh through `nvim-workbench-shell`, which loads your existing
+`~/.zshrc` first and then applies the packaged theme and helpers. The original
+file is not rewritten. The managed configuration is in
+`~/.config/nvim-workbench/zsh/.zshrc`; open a new workspace window after changes.
+The prompt also appears inside Neovim's terminal buffer when launched through
+the desktop workspace.
 
 | Command | Action |
 |---|---|
 | `v`, `vi`, `vim` | Open Neovim |
-| `nws [DIR]` | Open the multi-window Neovim workspace |
+| `nws [DIR]` | Open the workspace |
 | `venv-create NAME` | Create and activate a named Python venv |
 | `venv-use NAME` | Activate an existing project venv |
 | `deactivate` | Leave the active Python venv |
 | `docker-build-name IMAGE:TAG` | Build a named Docker image |
 | `compose-up-name PROJECT` | Build/start a named Compose project |
-| `compose-down-name PROJECT` | Stop it without deleting volumes |
+| `compose-down-name PROJECT` | Stop a named Compose project |
 | `cmake-presets` | List CMake configure presets |
 | `cmake-build-presets` | List CMake build presets |
 | `ctest-presets` | List CTest presets |
+
+The bootstrap plugin list includes Git, Docker, Compose, Python, pip,
+virtualenv, fzf, systemd, sudo, colored man pages, extract, command-not-found,
+and directory jumping. If your own `.zshrc` already loads Oh My Zsh, its plugin
+selection is retained while the theme and workbench helpers are applied.
 
 ## Core key mappings
 
@@ -455,7 +501,9 @@ checks `.venv/bin/python` and `venv/bin/python` before falling back to
 Run the same gate used by CI from the repository root:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_workspace.py'
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py'
+node tests/focus_border.test.cjs
+python3 tests/desktop_integration.py
 ./scripts/smoke-test.sh
 ```
 

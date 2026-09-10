@@ -9,6 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  desktop:
+    name: Desktop appearance and focus border
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out configuration
+        uses: actions/checkout@v5
+      - name: Install desktop test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh dconf-cli desktop-file-utils gnome-terminal fontconfig fonts-dejavu-core dbus-x11
+      - name: Test installers and launchers
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Test focus border lifecycle
+        run: node tests/focus_border.test.cjs
+      - name: Test isolated desktop settings and restore
+        run: PYTHONDONTWRITEBYTECODE=1 python3 tests/desktop_integration.py
+      - name: Check shell syntax
+        run: |
+          bash -n scripts/install.sh scripts/nvim-workspace scripts/nvim-workbench-shell
+          zsh -n desktop/zsh/startup.zsh desktop/zsh/neon-workbench.zsh-theme desktop/zsh/workbench.zsh
+
   smoke:
     name: Neovim ${{ matrix.neovim }}
     runs-on: ubuntu-latest

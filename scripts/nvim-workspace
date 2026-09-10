@@ -3,23 +3,42 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: nvim-workspace [DIRECTORY] [--gui APP] [--flatpak APP_ID]
+Usage: nvim-workspace [DIRECTORY] [--layout three|four] [--gui APP] [--flatpak APP_ID]
+       nvim-workspace [DIRECTORY] --set-only
+       nvim-workspace --pane code|terminal|shell|browser|codex
 
-Open three GNOME Terminal windows: Neovim, a Neovim terminal, and a shell.
+Use Ptyxis when available, with a GNOME Terminal fallback.
+The desktop installer adds the original font, palette, prompt, and tiling layouts.
 Run from a graphical desktop session. DIRECTORY defaults to the current directory.
 Neovim is found on PATH, or from its Flatpak if no native executable is available.
 Set NVIM_BIN to select a specific native Neovim executable.
+Set NVIM_WORKSPACE_TERMINAL to ptyxis, ptyxis-flatpak, or gnome-terminal to override.
 USAGE
 }
 
 fail() { printf 'nvim-workspace: %s\n' "$*" >&2; exit 1; }
 
 project=''
+pane=''
+set_only=false
+desktop_config="${XDG_CONFIG_HOME:-$HOME/.config}/nvim-workbench/desktop.env"
+if [[ -r $desktop_config ]]; then
+  # User-owned configuration written by the desktop installer.
+  source "$desktop_config"
+fi
+layout=${NVIM_WORKSPACE_LAYOUT:-three}
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/nvim-workspace"
 gui_apps=()
 flatpak_apps=()
 while [[ $# -gt 0 ]]; do
   case $1 in
     -h|--help) usage; exit 0 ;;
+    --set-only) set_only=true ;;
+    --pane|--layout)
+      [[ $# -ge 2 ]] || fail "$1 requires a value"
+      if [[ $1 == --pane ]]; then pane=$2; else layout=$2; fi
+      shift
+      ;;
     --gui|--flatpak)
       option=$1
       [[ $# -ge 2 && $2 != --* ]] || fail "$option requires an application"
@@ -35,13 +54,38 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+[[ $layout == three || $layout == four ]] || fail 'layout must be three or four'
+case $pane in ''|code|terminal|shell|browser|codex) ;; *) fail "unknown pane: $pane" ;; esac
+if [[ -z $project && -n $pane && -r "$state_dir/project" ]]; then
+  IFS= read -r project <"$state_dir/project" || true
+fi
 project=${project:-$PWD}
 [[ -d $project ]] || fail "not a directory: $project"
 project=$(cd -- "$project" && pwd -P)
+mkdir -p "$state_dir"
+project_tmp=$(mktemp "$state_dir/project.XXXXXX")
+trap 'rm -f -- "$project_tmp"' EXIT
+printf '%s\n' "$project" >"$project_tmp"
+mv -- "$project_tmp" "$state_dir/project"
+trap - EXIT
+if $set_only; then printf 'Remembered workspace: %s\n' "$project"; exit 0; fi
 [[ -n ${DISPLAY:-} || -n ${WAYLAND_DISPLAY:-} ]] ||
   fail 'a graphical desktop session is required; over SSH, run nvim directly'
-command -v gnome-terminal >/dev/null 2>&1 ||
-  fail 'GNOME Terminal is required. On Ubuntu: sudo apt install gnome-terminal'
+
+terminal=${NVIM_WORKSPACE_TERMINAL:-auto}
+ptyxis_app=${NVIM_WORKSPACE_PTYXIS_APP:-app.devsuite.Ptyxis}
+if [[ $terminal == auto ]]; then
+  if command -v ptyxis >/dev/null 2>&1; then terminal=ptyxis
+  elif command -v flatpak >/dev/null 2>&1 && flatpak info "$ptyxis_app" >/dev/null 2>&1; then terminal=ptyxis-flatpak
+  else terminal=gnome-terminal
+  fi
+fi
+case $terminal in
+  ptyxis) command -v ptyxis >/dev/null 2>&1 || fail 'Ptyxis is not installed' ;;
+  ptyxis-flatpak) flatpak info "$ptyxis_app" >/dev/null 2>&1 || fail "Ptyxis Flatpak is not installed: $ptyxis_app" ;;
+  gnome-terminal) command -v gnome-terminal >/dev/null 2>&1 || fail 'Install Ptyxis or run: sudo apt install gnome-terminal' ;;
+  *) fail "unsupported terminal: $terminal" ;;
+esac
 
 nvim_command=()
 if nvim_path=$(command -v -- "${NVIM_BIN:-nvim}"); then
@@ -61,11 +105,62 @@ if [[ ${#flatpak_apps[@]} -gt 0 ]]; then
   command -v flatpak >/dev/null 2>&1 || fail 'Flatpak is required for --flatpak'
 fi
 
-gnome-terminal --window --working-directory="$project" --title='Neovim Code' \
-  -- "${nvim_command[@]}"
-gnome-terminal --window --working-directory="$project" --title='Neovim Terminal' \
-  -- "${nvim_command[@]}" -c terminal -c startinsert
-gnome-terminal --window --working-directory="$project" --title='Project Shell'
+workspace_shell=${NVIM_WORKSPACE_SHELL:-${SHELL:-/bin/bash}}
+if [[ -n ${NVIM_WORKSPACE_SHELL:-} ]]; then
+  export NVIM_WORKSPACE_SHELL
+  nvim_command+=(--cmd 'lua vim.o.shell = vim.fn.shellescape(vim.env.NVIM_WORKSPACE_SHELL)')
+fi
+
+open_terminal() {
+  local role=$1 title=$2
+  shift 2
+  if [[ $terminal == gnome-terminal ]]; then
+    local profile_args=()
+    if [[ -n ${NVIM_WORKSPACE_GNOME_PROFILE:-} ]]; then profile_args+=(--profile="$NVIM_WORKSPACE_GNOME_PROFILE"); fi
+    gnome-terminal --window "${profile_args[@]}" --working-directory="$project" --title="$title" -- "$@"
+  else
+    local terminal_command=(ptyxis)
+    if [[ $terminal == ptyxis-flatpak ]]; then terminal_command=(flatpak run "$ptyxis_app"); fi
+    local log="$state_dir/$role.log"
+    "${terminal_command[@]}" --standalone --gapplication-app-id="io.github.chhenglydia.Nvim${role}" \
+      --working-directory="$project" --title="$title" -- "$@" </dev/null >>"$log" 2>&1 &
+    local terminal_pid=$!
+    sleep 0.2
+    if ! kill -0 "$terminal_pid" 2>/dev/null; then
+      wait "$terminal_pid" || { cat "$log" >&2; fail "Ptyxis failed to open $title"; }
+    fi
+  fi
+}
+
+open_pane() {
+  case $1 in
+    code) open_terminal Code 'Neovim Code' "${nvim_command[@]}" ;;
+    terminal) open_terminal Terminal 'Neovim Terminal' "${nvim_command[@]}" -c terminal -c startinsert ;;
+    shell) open_terminal Shell 'Project Shell' "$workspace_shell" -i ;;
+    codex)
+      if codex_path=$(command -v codex); then open_terminal Codex Codex "$codex_path"
+      else open_terminal Codex 'Project Shell' "$workspace_shell" -i
+      fi
+      ;;
+    browser)
+      if [[ -n ${NVIM_WORKSPACE_BROWSER_DESKTOP:-} ]] && command -v gtk-launch >/dev/null 2>&1; then gtk-launch "$NVIM_WORKSPACE_BROWSER_DESKTOP" &
+      elif command -v firefox >/dev/null 2>&1; then firefox --new-window about:blank &
+      elif command -v chromium >/dev/null 2>&1; then chromium --new-window about:blank &
+      else printf 'nvim-workspace: install a browser or use --gui APP\n' >&2
+      fi
+      ;;
+  esac
+}
+
+if [[ -n $pane ]]; then
+  open_pane "$pane"
+else
+  open_pane code
+  open_pane terminal
+  if [[ $layout == four ]]; then open_pane browser; open_pane codex
+  else open_pane shell
+  fi
+fi
 
 for app in "${gui_apps[@]}"; do
   if command -v -- "$app" >/dev/null 2>&1; then
